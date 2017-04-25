@@ -63,6 +63,28 @@ scale <- function(A,type)
   return(As)
 }
 
+createB_postcand <- function(kmPosClus,cc,ncluster)
+{
+  rn = c(paste("Pc",1:ncluster, sep=" "))
+  cn = cn_sort
+  
+  id=1:length(kmPosClus)
+  df=data.frame(kmPosClus,cc,id)
+  nmatr=matrix(0,ncol=length(cn),nrow=ncluster)
+  for (i in 1:ncluster)
+  {
+    for (j in 1:length(cn))
+    {
+      nmatr[i,j]=sum(df$kmPosClus==i & df$cc==j)
+    }
+  }
+  
+  rownames(nmatr)=rn
+  colnames(nmatr)=cn
+  return(nmatr)
+}
+
+
 createB_candidate <- function(cc,AdjMat,ncluster,niteration)
 {
   Y = model.matrix(~as.factor(cc)-1)
