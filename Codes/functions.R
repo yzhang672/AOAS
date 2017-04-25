@@ -1,4 +1,5 @@
 library(Matrix);library(dplyr);library(RSQLite);library(SnowballC)
+source("~/Dropbox/my project/frenchFacebook/code/words_del_sym.R")
 
 mycolor = c("red","blue","purple","magenta",
             "deepskyblue","orange","green", "cyan",
@@ -258,6 +259,122 @@ matmulACinf <- function(XWY,Xs,Ys,XLY_thresh,MeanXLYs,meanXLYs)
   }
 }
 
+drop2 = function(tmp){
+  return(substr(tmp, start = 21, stop = nchar(tmp)))  
+}
+
+textclean <- function (x)
+{
+  # lower case
+  x = tolower(x)
+  
+  x <- gsub("'"," ",x) ; x <- gsub("’"," ",x) ; 
+  x <- iconv(x, to='ASCII//TRANSLIT')
+  x <- gsub("/"," ",x) # we don't want those wwwstuff # if we want
+  x <- gsub("'","",x) 
+  # In ascii translit step, many "'" will be gernerated. 
+  # Simply deleting "'" will generate many new words
+  x <- gsub("[^[:alnum:][:space:]/]", " ", x) #reserve "/" for wwwyoutubecom
+  
+  
+  # remove number
+  x = gsub("[[:digit:]]", " ", x)
+  
+  #replace special symbols in french
+  
+  x = gsub("[^[:alnum:]]", " ", x)
+  
+  # remove extra white spaces
+  x = gsub("[ \t]{2,}", " ", x)
+  x = gsub("^\\s+|\\s+$", "", x)
+  
+  return(x)
+}
+
+
+
+freqmatr <- function(x,rname,const,count,language)
+{
+  
+  mycorpus <- Corpus(VectorSource(x),readerControl=list(language=language))
+  #tolower doesn't work for mycorpus%>% TermDocumentMatrix here
+  mycorpus <- mycorpus %>% tm_map(removeWords,myStopwords)
+  mydic <- mycorpus
+  mycorpus <- tm_map(mycorpus, stemDocument,language = language)
+  
+  mytdm <- TermDocumentMatrix(mycorpus, control = list(minWordLength = 1))
+  
+  # make the entries 1 since there are lots of weird replications in text
+  if(count == FALSE)
+  {
+    nv <- length(mytdm$v)
+    mytdm$v <- rep(1,nv)
+  }
+  
+  
+  freqterm <- findFreqTerms(mytdm, lowfreq = (mytdm$ncol)/const, highfreq = Inf)
+  
+  freqc <- mytdm[freqterm,]
+  freqm <- spMatrix(nrow=freqc$ncol,ncol=freqc$nrow,i=freqc$j,j=freqc$i,x=freqc$v)
+  
+  stemcomplete = stemCompletion(freqterm, mydic)
+  stemcompl = which(stemcomplete!="")
+  freqterm[stemcompl] = stemcomplete[stemcompl]
+  
+  colnames(freqm) <- freqterm
+  rownames(freqm) <- rname
+  return(freqm)
+}
+
+
+ReplaceSynonyms <- function(x, syn) { 
+  n = length(syn)
+  for(i in 1:n)
+  {
+    syns = syn[[i]]$syns
+    word = syn[[i]]$word
+    msyns = which(!is.na(match(x,syns)))
+    x[msyns] = rep(word,length(msyns))
+  }
+  return(x)
+}
+
+wordsmat_replacesym <- function(freqm,syn = synonyms)
+{
+  freqterm = ReplaceSynonyms(colnames(freqm),syn)
+  
+  colnames(freqm) <- freqterm
+  
+  freqm <- t(combine_matrix(t(freqm)))
+  
+  cna = which(freqterm=="")
+  if(length(cna>0)){freqm <- freqm[,-cna]}
+  freqm@x = rep(1,length(freqm@x))
+  
+  return(freqm)
+}
+
+
+
+combine_matrix <- function(A,counts=FALSE) #by row
+{
+  fan = A %>% rownames %>% unique
+  cfan = match(A %>% rownames,fan)
+  nx=length(fan);ny=length(A[1,])
+  B = spMatrix(nrow = nx , ncol = ny, 
+               i = cfan[A@i+1]  , j = A@j+1 , x = A@x ) 
+  
+  if (counts==FALSE)
+  {
+    nx = length(B@x)
+    B@x = rep(1,nx)
+  }
+  rownames(B) = fan
+  colnames(B) = colnames(A)
+  return(B)
+}
+
+
 expect_count <- function(X)
 {
   rs = rowSums(X); cs = colSums(X); ss = sum(X)
@@ -337,4 +454,105 @@ GgPlotClusSizes <- function(DataFrame, Clusters, ncluster, xlab, ylab, main){
           axis.title.y = element_text(size=12, face = "bold"),
           title = element_text(size = 14, face = "bold")
     )
+}
+
+
+balloonGgPlot = function(M, nscale, logTran, sqrtTran, xlable, ylable, main, DotColour){
+  
+  n = nrow(M)
+  d = ncol(M)
+  
+  M = M[,d:1]*nscale;
+  
+  scaleItMean = mean(abs(M))
+  
+  if(logTran){
+    scaleItMean = mean(log(abs(M) +1))
+  }
+  if(sqrtTran){
+    scaleItMean = mean(sqrt(abs(M)))
+  }
+  
+  M = as.data.frame(as.table(as.matrix(M)))
+  
+  DotSize = rep(0,n*d);
+  
+  for(i in 1:(n*d)){
+    dotSize = abs(M$Freq[i])
+    if(logTran) dotSize= log(dotSize + 1)
+    if(sqrtTran) dotSize = sqrt(dotSize)
+    DotSize[i] = dotSize
+    
+  }
+  
+  M = data.frame(M, DotSize, DotColour)
+  
+  s <- ggplot(M, aes(Var1, Var2)) + xlab(NULL) + ylab(NULL)+
+    geom_point( aes(size = DotSize, colour = DotColour))+
+    xlab(xlable) +
+    ylab(ylable) +
+    ggtitle(main) +
+    theme_bw() +
+    theme(
+      #legend.position = "none",
+      axis.text.x = element_text(size=10, face = "bold"),
+      axis.text.y = element_text(size=10, face = "bold"),
+      axis.title.x = element_text(size=12, face = "bold"),
+      axis.title.y = element_text(size=12, face = "bold"),
+      title = element_text(size = 14, face = "bold")
+    )
+  s
+}
+
+
+ballGgPlot = function(BDF, ncluster, nscale, logTran, sqrtTran,type){
+  if(type == "Citizen") {
+    start = 0; end = 3; 
+    xlable = "Citizen-Clusters"; main = "Average Number of Comments"}
+  if(type == "Post") {
+    start = 3; end = 6;
+    xlable = "Post-Clusters"; main = "Average Number of Posts"}
+  
+  sel = (ncluster*start+1):(ncluster*end)
+  M = BDF[sel,]
+  n = nrow(M)
+  d = ncol(M)
+  M = M[,d:1];
+  M = as.data.frame(as.table(as.matrix(M)))
+  Type = substr(as.character(M$Var1), 1,1)
+  Hvalue = substr(as.character(M$Var1), 5,5)
+  Hvalue[which(Hvalue=="")] = "0"
+  M$Var1 = substr(as.character(M$Var1), 4,4)
+  ci = which(Type=="F")
+  DotSize = M$Freq
+  DotSize[ci] = M$Freq[ci]*nscale
+  if(logTran) M$Freq[ci] = log(M$Freq[ci]+1)
+  if(sqrtTran) M$Freq[ci] = sqrt(M$Freq[ci])
+  
+  DF_new = data.frame(M, DotSize, Type, Hvalue)
+  levels(DF_new$Hvalue) = c("h = 0", "h = 10", "h = infinity")
+  
+  
+  plot_labeller <- function(variable, value) {
+    names_li <- list("0" = expression(h ~ "=" ~ 0), 
+                     "1" = expression(h ~ "=" ~ 10), 
+                     "2" = expression(h ~ "=" ~ infinity))
+    return(names_li[value])
+  }
+  
+  
+  s <- ggplot(DF_new, aes(Var1, Var2)) + 
+    geom_point( aes(size = DotSize)) + 
+    xlab(xlable)+ ylab("Candidate-Walls") +
+    ggtitle(main) +
+    theme_bw() +
+    theme(
+      #legend.position = "none",
+      axis.text.x = element_text(size=8),
+      axis.text.y = element_text(size=8),
+      axis.title.x = element_text(size=12, face = "bold"),
+      axis.title.y = element_text(size=12, face = "bold"),
+      title = element_text(size = 14, face = "bold")
+    )
+  s + facet_grid(~Hvalue, labeller = plot_labeller)
 }
