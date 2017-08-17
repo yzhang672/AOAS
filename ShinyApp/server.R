@@ -128,13 +128,6 @@ shinyServer(function(input, output) {
   }
   
   
-  # Why we need this? WEIRD.
-  i = 7
-  RotatePost[[7]] = c(3,4,1,2)
-  IssuestrResults[[i]][[6]] = IssuestrResults[[i]][[6]][,RotatePost[[i]]]
-  colnames(IssuestrResults[[i]][[6]]) = clusternames
-  
-  
   
   output$text1 <- renderText({ 
     i = input$myweight+1;
