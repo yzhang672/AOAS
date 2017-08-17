@@ -7,20 +7,14 @@ library(plyr);library(reshape);library(plotrix)
 
 source('functions_shiny.R')
 load('allpostfans.RData')
-load('cc.RData')
+load('cc_sort.RData')
 load("canstr_Bresult9.RData")
 load("IssuestrResults.RData")
 load("freqwords.RData")
 load("wordsplacePCiCi.RData")
 load("Allpostcon.RData")
-load("CallResMat.RData")
 
-cc_sort = cc
-for(i in 1:8)
-{
-  ci = which(cc==i)
-  cc_sort[ci] = cn_match[i]
-}
+
 
 altogether = allpostcon[ncol(allpostfans)+1:nrow(allpostcon),c(2,5,6,4)]
 
@@ -28,17 +22,16 @@ unifan = rownames(allpostfans); allfan = altogether[,2]
 matchfan = match(allfan,unifan)
 altogether[,2] = format(matchfan)
 
-ncandidate = 8; nscale = 1000; scalescore = 1000
+ncandidate = 8; nscale = 1; scalescore = 1000
 
 shinyServer(function(input, output) {
   
   createCandstrBallPlot <- reactive({
     main = "Average Number of Comments"
     B = B0result9[[1]];  
-    log(B*nscale+1)
     rownames(B) = as.character(1:nrow(B))
     colball = as.factor(rep(1:9,8))
-    balloonGgPlot(B, nscale, TRUE, FALSE, "Citizen-clusters", "Candidates' Walls", main, colball) +
+    balloonGgPlot(B, nscale, FALSE, FALSE, "Citizen-Clusters", "Candidate-Walls", main, colball) +
       ggtitle("Average Number of Comments") +
       theme_bw() +
       theme(
@@ -50,11 +43,11 @@ shinyServer(function(input, output) {
         title = element_text(size = 14, face = "bold")
       )+
       scale_colour_manual(values = mycolor[1:9],
-                          name="Citizen-clusters",
+                          name="Citizen-Clusters",
                           breaks=factor(1:9),
                           labels=mycolor[1:9],
                           guide = "none"
-      ) 
+      ) + theme(plot.title = element_text(hjust = 0.5))
     
       
   })
@@ -76,7 +69,7 @@ shinyServer(function(input, output) {
     df = data.frame(Candidate,labels,Citizen_cluster)
     
     xlab = "Citizen-Clusters"; ylab = "Sizes"; main = "Sizes of the Citizen-Clusters";
-    GgPlotClusSizes(df, Citizen_cluster, 9, xlab, ylab, main)
+    GgPlotClusSizes(df, Citizen_cluster, 9, xlab, ylab, main) + theme(plot.title = element_text(hjust = 0.5))
   })
   
   output$CandstrFanPlot <- renderPlot({
@@ -110,27 +103,66 @@ shinyServer(function(input, output) {
   # Issue Structure
   ncluster = 4;
   
+  RotatePost = RotateCitizen = list()
+  
+  for(j in 1:8){RotatePost[[j]] = 1:4; RotateCitizen[[j]] = c(3,4,1,2)}
+  
+  RotatePost[[5]] = c(1,3,2,4)
+  RotatePost[[6]] = c(4,2,3,1)
+  #RotatePost[[7]] = c(2,3,4,1)
+  RotatePost[[7]] = c(4,1,2,3)
+  RotatePost[[8]] = c(3,4,1,2)
+  
+  RotateCitizen[[8]] = c(3,4,2,1)
+  
+  for(i in 1:8)
+  {
+    IssuestrResults[[i]][[3]][[1]] = IssuestrResults[[i]][[3]][[1]][RotateCitizen[[i]],RotatePost[[i]]]
+    IssuestrResults[[i]][[3]][[2]] = RotateCitizen[[i]][IssuestrResults[[i]][[3]][[2]]]
+    IssuestrResults[[i]][[3]][[3]] = RotatePost[[i]][IssuestrResults[[i]][[3]][[3]]]
+    clusternames = colnames(IssuestrResults[[i]][[6]])
+    IssuestrResults[[i]][[6]] = IssuestrResults[[i]][[6]][,RotatePost[[i]]]
+    IssuestrResults[[i]][[7]] = IssuestrResults[[i]][[7]][,RotateCitizen[[i]]]
+    colnames(IssuestrResults[[i]][[6]]) = clusternames
+    colnames(IssuestrResults[[i]][[7]]) = clusternames
+  }
+  
+  
+  # Why we need this? WEIRD.
+  i = 7
+  RotatePost[[7]] = c(3,4,1,2)
+  IssuestrResults[[i]][[6]] = IssuestrResults[[i]][[6]][,RotatePost[[i]]]
+  colnames(IssuestrResults[[i]][[6]]) = clusternames
+  
+  
+  
   output$text1 <- renderText({ 
     i = input$myweight+1;
-    if(IssuestrResults[[i]][[1]][2]==0)
-    paste("You have selected weight", IssuestrResults[[i]][[1]][1])
-    else{paste("You have selected weight infinity (not 100, 100 is just for displaying convenience)")}
+    if(IssuestrResults[[i]][[1]][2]==1)
+      paste("You have selected weight infinity (not 1000000, it is just for displaying convenience)")
+    else{
+      if(IssuestrResults[[i]][[1]][1]==10)
+      paste("You have selected weight", IssuestrResults[[i]][[1]][1], 
+              ".  This is the case when h = 0.035 in the paper.")
+      else{paste("You have selected weight", IssuestrResults[[i]][[1]][1])}
+      }
+    
   })
   
   output$text2 <- renderText({ 
-    paste("The posts that contains the interested post-word", input$postword)
+    paste("The posts that contains the interested thread-word", input$postword)
   })
   
   output$text3 <- renderText({ 
-    paste("The comments that contains the interested fan-word", input$fanword)
+    paste("The comments that contains the interested citizen-word", input$citizenword)
   })
   
   createIssuestrBallPlot <- reactive({
     i = input$myweight+1;
     Bresult = IssuestrResults[[i]][[3]];
-    main = "Fan cluster by Post cluster"
-    # no need to nscale here since already scaled in creating B
-    balloonGgPlot(Bresult[[1]],1, TRUE, FALSE, "Fan Clusters", "Post Clusters", main, NULL)
+    main = "How Citizen-Clusters interact with Post-Clusters"
+    #B = Bresult[[1]][RotateCitizen[[i]], ]
+    balloonGgPlot(B,1, FALSE, FALSE, "Citizen-Clusters", "Post-Clusters", main, NULL)
     
   })
   
@@ -143,8 +175,11 @@ shinyServer(function(input, output) {
     Bresult = IssuestrResults[[i]][[3]];
     kmCitiClus <- Bresult[[2]]
     B <- createB_general_nosort(allpostfans, kmCitiClus, cc_sort)
-    main = "Citizen Cluster by Candidates"
-    p = balloonGgPlot(B,nscale,TRUE, FALSE, "Candidates", "Post Clusters", main, NULL)
+    colnames(B) <- cn_sort; rownames(B) <- paste( "Cluster", as.character(1:4))
+    main = "How Citizen-Clusters interact on Candidate-Walls"
+    Brt = B
+    #Brt = B[RotateCitizen[[i]],]; rownames(Brt) = rownames(B);
+    p = balloonGgPlot(Brt,nscale,FALSE, FALSE, "Citizen-Clusters", "Candidate-Walls", main, NULL)
     p
   })
   
@@ -158,8 +193,13 @@ shinyServer(function(input, output) {
     Bresult = IssuestrResults[[i]][[3]];
     kmPosClus <- Bresult[[3]]
     B <- createB_postcand(kmPosClus,cc_sort, ncluster)
-    main = "Post Cluster by Candidates"
-    p = balloonGgPlot(t(B),nscale,TRUE, FALSE, "Candidates", "Post Clusters", main, NULL)
+    Ds = diag(1/summary(as.factor(kmPosClus)))
+    Dr = diag(1/summary(as.factor(cc_sort)))
+    Bn = Ds %*% B %*% Dr
+    #Bn = Bn[RotatePost[[i]], ]
+    colnames(Bn) <- cn_sort; rownames(Bn) <- paste( "Cluster", as.character(1:4))
+    main = "How Post-Clusters distribute on Candidate-Walls"
+    p = balloonGgPlot(Bn,nscale,FALSE, FALSE, "Post-Clusters", "Candidate-Walls", main, NULL)
     p
   })
   
@@ -168,27 +208,7 @@ shinyServer(function(input, output) {
     
   })
   
-  createCallResponsePlot <- reactive({
-    Mat.m <- melt(as.matrix(Mat))
-    colnames(Mat.m) = c("Citizen_Words", "Post_Words", "Value")
-    p <- ggplot(Mat.m, aes(Post_Words,Citizen_Words)) + 
-      geom_tile(aes(fill = Value),colour = "white") + 
-      scale_fill_gradient(low = "white", high = "steelblue") +
-      ggtitle("(Part of) Call-Response Matrix") +
-      xlab("Post-Words") + ylab("Citizen-Words")+
-      theme(
-        axis.text.x = element_text(size=10, face = "bold",angle = 80),
-        axis.text.y = element_text(size=10, face = "bold"),
-        axis.title.x = element_text(size=12, face = "bold"),
-        axis.title.y = element_text(size=12, face = "bold"),
-        title = element_text(size = 12, face = "bold")
-      )
-    p  
-  })
-  
-  output$CallResponsePlot <- renderPlot({
-    createCallResponsePlot()
-  })
+ 
   
   Issuepostword_signif <- reactive({
     i = input$myweight+1;
@@ -236,19 +256,6 @@ shinyServer(function(input, output) {
     }
   )
   
-  output$downloadIssuestrFanPlot <- downloadHandler(
-    filename = "IssuestrFanPlot.png",
-    content = function(file) {
-      ggsave(file,createIssuestrFanPlot())
-    }
-  )
-  
-  output$downloadIssuestrPostPlot <- downloadHandler(
-    filename = "IssuestrPostPlot.png",
-    content = function(file) {
-      ggsave(file,createIssuestrPostPlot())
-    }
-  )
   
   output$downloadIssuestrPostWordSigTable <- downloadHandler(
     filename = function() { paste('IssuestrPostWordSig', '.csv', sep='') },
@@ -266,8 +273,8 @@ shinyServer(function(input, output) {
   
   
   createIssuestrFanTable <- reactive({
-    word = input$fanword
-    clusid = input$fanword_clusid
+    word = input$citizenword
+    clusid = input$citizenword_clusid
     wi = match(word, fanfreqwords)
     ci = Ci[[wi]]
     i = input$myweight+1;
@@ -277,7 +284,7 @@ shinyServer(function(input, output) {
     comi = cbind(altogether[ci,],kmcluster[ci],FanScore[ci])
     clusi = which(comi[,5]==clusid)
     comi = comi[clusi,]
-    colnames(comi) = c("candidate wall","fan id","comment text", "post text","fan cluster","score of fans")
+    colnames(comi) = c("Candidate-Wall","Citizen-ID","Comment-Text", "Post-Text","Citizen-Cluster","Citizen-Score")
     comiorder = comi[with(comi,order(-comi[,6])),]
     display = comiorder[1:min(input$issuemaxrows,nrow(comi)),]
     display[,6] = format(display[,6]*scalescore, digits = 3)
@@ -291,8 +298,8 @@ shinyServer(function(input, output) {
   )
   
   createIssuestrPostTable <- reactive({
-    word = input$postword
-    clusid = input$postword_clusid
+    word = input$threadword
+    clusid = input$threadword_clusid
     wi = match(word, postfreqwords)
     pci = PCi[[wi]]
     i = input$myweight+1;
@@ -302,7 +309,7 @@ shinyServer(function(input, output) {
     comi = cbind(allpostcon[pci,-3],kmcluster[pci],PostScore[pci])
     clusi = which(comi[,(ncol(comi)-1)]==clusid)
     comi = comi[clusi,]
-    colnames(comi) = c("source","candidate wall", "post text","fan id","comment text","post cluster","score of posts")
+    colnames(comi) = c("Source","Candidate-Wall", "Post-Text","Citizen-ID","Comment-Text","Post-Cluster","Post-Score")
     comiorder = comi[with(comi,order(-comi[,ncol(comi)])),]
     display = comiorder[1:min(input$issuemaxrows,nrow(comi)),]
     display[,ncol(comi)] = format(display[,ncol(comi)]*scalescore, digits = 3)
