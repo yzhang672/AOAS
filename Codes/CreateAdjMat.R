@@ -1,15 +1,8 @@
 library(Matrix)
 source('~/Dropbox/my project/frenchFacebook/code/codecleaned/functions.R')
-load('~/Documents/study/my project/frenchFacebook/previous work/fordesk00/mydata/tables.RData')
-
-lepe = tables$lepen
-joly = tables$joly
-bayr = tables$bayrou
-holl = tables$hollande
-mele = tables$melenchon
-dupo = tables$dupont
-sark = tables$sarkozy
-pout = tables$poutou
+setwd('~/Documents/study/my project/frenchFacebook/previous work/fordesk00/mydata')
+load('HollData.RData'); load('SarkData.RData'); load('LepeData.RData'); load('MeleData.RData');
+load('BayrData.RData'); load('DupoData.RData'); load('PoutData.RData'); load('JolyData.RData');
 
 allparent_url = c(lepe$parent_url,joly$parent_url,bayr$parent_url,
                   holl$parent_url,mele$parent_url,dupo$parent_url,
