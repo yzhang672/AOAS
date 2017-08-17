@@ -32,25 +32,26 @@ p <- ggplot(data=svdLapd, mapping=aes(x=label, y=singular_value)) +
   scale_size_area() + 
   xlab("singular values") +
   ylab("labels") +
-  ggtitle("SVD of the Fan by Candidate network")
-p    
+  ggtitle("SVD of the Citizen by Candidate network")
+p + theme(plot.title = element_text(hjust = 0.5))   
 
 
 B0result8=createB_candidate(cc,allpostfans,ncandidate,niteration)
 B0result9=createB_candidate(cc,allpostfans,ncandidate+1,niteration)
 
-ncluster = 8
-B = B0result8[[1]];  clusters = B0result8[[2]]
+ncluster = 9
+B = B0result9[[1]];  clusters = B0result9[[2]]
 rownames(B) = as.character(1:nrow(B))
+colnames(B) = cn_sort
 colball = as.factor(rep(1:ncluster,8))
-balloonGgPlot(B, nscale, TRUE, FALSE, "Citizen-Clusters", "Candidate-Walls", 
+balloonGgPlot(B, 1, FALSE, FALSE, "Citizen-Clusters", "Candidate-Walls", 
               main = "Average Number of Comments", colball) +
   scale_colour_manual(values = mycolor[1:ncluster],
                       name="Citizen-clusters",
                       breaks=factor(1:ncluster),
                       labels=mycolor[1:ncluster],
                       guide = "none"
-  ) 
+  ) + theme(plot.title = element_text(hjust = 0.5))
 
 
 
@@ -63,5 +64,5 @@ df = data.frame(Candidate,labels,Citizen_cluster)
 length(which(clusters==9))
 
 xlab = "Citizen-Clusters"; ylab = "Sizes"; main = "Sizes of the Citizen-Clusters";
-GgPlotClusSizes(df, Citizen_cluster, ncluster, xlab, ylab, main)
+GgPlotClusSizes(df, Citizen_cluster, ncluster, xlab, ylab, main)+ theme(plot.title = element_text(hjust = 0.5))
   

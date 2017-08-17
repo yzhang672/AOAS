@@ -1,16 +1,10 @@
-library(ggplot2)
+library(ggplot2);library(data.table); library(mltools)
 source('~/Dropbox/my project/frenchFacebook/code/text_to_facetgrid.R')
 source('~/Dropbox/my project/frenchFacebook/code/code_cleaned/functions.R')
 setwd("~/Dropbox/my project/frenchFacebook/data")
 load('allpostfans.RData')
-load("cc.RData")
+load("cc_sort.RData")
 
-cc_sort = cc
-for(i in 1:8)
-{
-  ci = which(cc==i)
-  cc_sort[ci] = cn_match[i]
-}
 
 cs = list(); rs = list()
 cs[[1]] = colSums(allpostfans)
@@ -75,7 +69,8 @@ a = ggplot(Df[which(Df$Candidate=='All' & Df$Degree_type=="Citizen Degrees"),],
     title = element_text(size = 12, face = "bold"),
     legend.position="none"
   )
-a + annotation_logticks() 
+a + annotation_logticks() + 
+  theme(plot.title = element_text(hjust = 0.5))
 
 
 b = ggplot(Df[which(Df$Candidate != "All" & Df$Degree_type=="Post Degrees"),], 
@@ -111,6 +106,6 @@ b = ggplot(Df[which(Df$Candidate != "All" & Df$Degree_type=="Post Degrees"),],
                       breaks=cn_sort,
                       labels=cn_sort
   ) 
-b + annotation_logticks() 
+b + annotation_logticks() + theme(plot.title = element_text(hjust = 0.5))
 
 

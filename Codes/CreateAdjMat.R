@@ -1,5 +1,5 @@
 library(Matrix)
-source('~/Dropbox/my project/frenchFacebook/code/functions.R')
+source('~/Dropbox/my project/frenchFacebook/code/codecleaned/functions.R')
 load('~/Documents/study/my project/frenchFacebook/previous work/fordesk00/mydata/tables.RData')
 
 lepe = tables$lepen
@@ -29,5 +29,13 @@ n[5]=length(unique(mele$parent_url));n[6]=length(unique(dupo$parent_url));
 n[7]=length(unique(sark$parent_url));n[8]=length(unique(pout$parent_url));
 cc = c()
 for(i in 1:length(n)) cc = c(cc, rep(i,n[i]))
-#save(cc, file = "~/Dropbox/my project/frenchFacebook/data/cc.RData")
+
+cc_sort = cc
+for(i in 1:8)
+{
+  ci = which(cc==i)
+  cc_sort[ci] = cn_match[i]
+}
+
+#save(cc_sort, file = "~/Dropbox/my project/frenchFacebook/data/cc_sort.RData")
 

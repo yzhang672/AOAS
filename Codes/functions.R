@@ -1,16 +1,23 @@
 library(Matrix);library(dplyr);library(RSQLite);library(SnowballC)
 source("~/Dropbox/my project/frenchFacebook/code/words_del_sym.R")
 
-mycolor = c("red","blue","purple","magenta",
-            "deepskyblue","orange","green", "cyan",
-            "brown","yellow","skyblue")
+#mycolor = c("red","blue","purple","magenta",
+#            "deepskyblue","orange","green", "cyan",
+#            "brown","yellow","skyblue")
+
+mycolor = c("magenta","deepskyblue","blue","red2",
+            "orange","green", "purple", "brown",
+            "cyan","tomato","yellow","skyblue")
 
 ## match candidates with their ranks in the election
-cn = c("Lepen", "Joly", "Bayrou", "Hollande", 
-       "Melenchon", "Dupont", "Sarkozy", "Poutou")
-cn_sort = c("Hollande", "Sarkozy", "Lepen", "Melenchon",
+cn = c("Le Pen", "Joly", "Bayrou", "Hollande", 
+       "Mélenchon", "Dupont", "Sarkozy", "Poutou")
+cn_sort = c("Hollande", "Sarkozy", "Le Pen", "Mélenchon",
             "Bayrou", "Joly", "Dupont", "Poutou")
 cn_match = match(cn,cn_sort)
+
+
+
 
 
 createA <- function(x,y)
@@ -98,9 +105,9 @@ createB_candidate <- function(cc,AdjMat,ncluster,niteration)
   zz = solve(t(Zhat)%*%Zhat)
   B0 = zz%*%t(Zhat)%*%AdjMat%*%Y%*%yy
   
-  cn = c("Lepen", "Joly", "Bayrou", "Hollande", 
-         "Melenchon", "Dupont", "Sarkozy", "Poutou")
-  cn_sort = c("Hollande", "Sarkozy", "Lepen", "Melenchon",
+  cn = c("Le Pen", "Joly", "Bayrou", "Hollande", 
+         "Mélenchon", "Dupont", "Sarkozy", "Poutou")
+  cn_sort = c("Hollande", "Sarkozy", "Le Pen", "Mélenchon",
               "Bayrou", "Joly", "Dupont", "Poutou")
   sortPosClus = cn_match
   cn = cn[sortPosClus]
@@ -191,7 +198,6 @@ createB_general <- function(AdjMat, kms_cluster, kmr_cluster,ncluster,sorttype)
   {csB0 = apply(B0,2,max); csB0sort = sort(csB0,decreasing=TRUE);
   sortPosClus = match(csB0sort, csB0)
   B1=B0[,sortPosClus]; 
-  B1=B1*nscale
   
   rsB1 = apply(B1,1,max)
   rsB1sort = sort(rsB1,decreasing=TRUE);
@@ -396,6 +402,13 @@ combine_matrix <- function(A,counts=FALSE) #by row
   return(B)
 }
 
+threshold <- function(A,thresh)
+{
+  At = A
+  At[abs(A) <= thresh] = 0
+  return(At)
+}
+
 
 expect_count <- function(X)
 {
@@ -527,13 +540,24 @@ balloonGgPlot = function(M, nscale, logTran, sqrtTran, xlable, ylable, main, Dot
 }
 
 
-ballGgPlot = function(BDF, ncluster, nscale, logTran, sqrtTran,type){
+ballGgPlot = function(BDF, ncluster, nscale, logTran, sqrtTran,
+                      type, eachvalue, Label){
   if(type == "Citizen") {
-    start = 0; end = 3; 
-    xlable = "Citizen-Clusters"; main = "Average Number of Comments"}
+    start = 0; end = 3; mybreaks = 0:3*0.01
+    xlable = "Citizen-Clusters"; main = expression(bold(Average ~ Number ~ of ~ Comments))}
   if(type == "Post") {
-    start = 3; end = 6;
-    xlable = "Post-Clusters"; main = "Average Number of Posts"}
+    start = 3; end = 6; mybreaks = 0:3*0.001
+    xlable = "Post-Clusters"; main = expression(bold(Average ~ Number ~ of ~ Posts))}
+  if(type == "Each") {
+    start = eachvalue-1; end = start+1;
+    if(eachvalue<4){
+      mybreaks = 0:3*0.01; typevalue = eachvalue
+      xlable = "Citizen-Clusters"; main = expression(bold(Average ~ Number ~ of ~ Comments))
+    }else{
+      mybreaks = 0:3*0.001; typevalue = eachvalue-3
+      xlable = "Post-Clusters"; main = expression(bold(Average ~ Number ~ of ~ Posts))
+    }
+    }
   
   sel = (ncluster*start+1):(ncluster*end)
   M = BDF[sel,]
@@ -545,23 +569,22 @@ ballGgPlot = function(BDF, ncluster, nscale, logTran, sqrtTran,type){
   Hvalue = substr(as.character(M$Var1), 5,5)
   Hvalue[which(Hvalue=="")] = "0"
   M$Var1 = substr(as.character(M$Var1), 4,4)
-  ci = which(Type=="F")
   DotSize = M$Freq
-  DotSize[ci] = M$Freq[ci]*nscale
-  if(logTran) M$Freq[ci] = log(M$Freq[ci]+1)
-  if(sqrtTran) M$Freq[ci] = sqrt(M$Freq[ci])
+  DotSize = M$Freq*nscale
+  if(logTran) M$Freq = log(M$Freq+1)
+  if(sqrtTran) M$Freq = sqrt(M$Freq)
   
   DF_new = data.frame(M, DotSize, Type, Hvalue)
-  levels(DF_new$Hvalue) = c("h = 0", "h = 10", "h = infinity")
   
-  
-  plot_labeller <- function(variable, value) {
-    names_li <- list("0" = expression(h ~ "=" ~ 0), 
-                     "1" = expression(h ~ "=" ~ 10), 
-                     "2" = expression(h ~ "=" ~ infinity))
-    return(names_li[value])
+  mylevels = c(expression(h ~ "=" ~ 0),
+               expression(h ~ "=" ~ 0.035), 
+               expression(h ~ "=" ~ infinity))
+  if(length(eachvalue)==0){
+    levels(DF_new$Hvalue) = mylevels
+  }else{
+    levels(DF_new$Hvalue) = mylevels[typevalue]
   }
-  
+ 
   
   s <- ggplot(DF_new, aes(Var1, Var2)) + 
     geom_point( aes(size = DotSize)) + 
@@ -569,12 +592,16 @@ ballGgPlot = function(BDF, ncluster, nscale, logTran, sqrtTran,type){
     ggtitle(main) +
     theme_bw() +
     theme(
-      #legend.position = "none",
-      axis.text.x = element_text(size=8),
-      axis.text.y = element_text(size=8),
+      legend.title = element_text(size=10, face = "bold"),
+      axis.text.x = element_text(size=8, face = "bold"),
+      axis.text.y = element_text(size=8, face = "bold"),
       axis.title.x = element_text(size=12, face = "bold"),
       axis.title.y = element_text(size=12, face = "bold"),
       title = element_text(size = 14, face = "bold")
-    )
-  s + facet_grid(~Hvalue, labeller = plot_labeller)
+    ) + scale_size(range = c(0,5), breaks = mybreaks)
+  
+  if(Label == TRUE){
+    return(s + facet_grid(~Hvalue, labeller = label_parsed))
+  }else{return(s)}
+
 }

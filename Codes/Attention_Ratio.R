@@ -1,11 +1,8 @@
-library(ggplot2)
+library(ggplot2);library(nnet)
 source('~/Dropbox/my project/frenchFacebook/code/code_cleaned/functions.R')
 setwd("~/Dropbox/my project/frenchFacebook/data")
-load('allpostfans.RData'); load("cc.RData")
+load('allpostfans.RData'); load("cc_sort.RData")
 
-## match candidates with their ranks in the election
-cc_sort = cc
-for(i in 1:8) { ci = which(cc==i); cc_sort[ci] = cn_match[i] }
 
 Cand_level = c("All",cn_sort)
 rs = rowSums(allpostfans)
@@ -32,8 +29,8 @@ ci = which(is.na(match(RS_select$rs_whichmax,c("Poutou"))))
 
 g = 
   ggplot(RS_select[ci,], aes(x=rs_prop, ..density..,fill = rs_whichmax, colour = rs_whichmax, 
-                             alpha = 0.2)) + 
-  geom_histogram(origin = 1/10, binwidth = 1/10) + 
+                             alpha = 0)) + 
+  geom_histogram(binwidth = 1/10) + 
   #geom_density(adjust = 1) +
   theme_bw() + # background no ink
   theme(
@@ -57,9 +54,9 @@ g =
                       labels=Cand_level)
 
 g + facet_wrap(~rs_whichmax, ncol = 4) +
-  theme(legend.position="none")
+  theme(legend.position="none")+ theme(plot.title = element_text(hjust = 0.5))
 
-
+require(hexbin)
 g = 
   ggplot(RS, aes(x = rs_sum,y = rs_prop)) + 
   stat_binhex(binwidth = c(1/5, 1/10))+
@@ -86,7 +83,7 @@ g =
                       breaks = 10^c(1,2,3,4),
                       labels = scales::trans_format("log10", scales::math_format(10^.x))
   )
-g+facet_wrap(~rs_whichmax, ncol = 3) 
+g+facet_wrap(~rs_whichmax, ncol = 3) + theme(plot.title = element_text(hjust = 0.5))
 
 
 
@@ -96,24 +93,24 @@ citizen_favgroups = rs_whichmax[which(rs_whichmax!="0")]
 citizen_favgroups = as.numeric(citizen_favgroups)-1
 ncluster = 8; nscale = 1000
 
-Bresult = createB_general_nosort(allpostfans, citizen_favgroups, cc)
+Bresult = createB_general(allpostfans, citizen_favgroups, cc, ncluster, "BSize")
 sortPosClus = cn_match
 
-B = Bresult[,sortPosClus];
+B = Bresult[[1]];
 round(B*1000)
 rownames(B) = as.character(1:ncluster);
 colnames(B) = cn_sort
 colball = as.factor(rep(1:ncluster,8))
 
-balloonGgPlot(B, nscale, TRUE, FALSE, 
-              "Citizen-Groups", "Candidate-Walls", 
+balloonGgPlot(B, 1, FALSE, FALSE, 
+              "Citizen-Clusters", "Candidate-Walls", 
               main = "Average Number of Comments", colball) +
   scale_colour_manual(values = mycolor[1:ncluster],
-                      name="Citizen-groups",
+                      name="Citizen-Clusters",
                       breaks=factor(1:ncluster),
                       labels=mycolor[1:ncluster],
                       guide = "none"
-  ) 
+  ) + theme(plot.title = element_text(hjust = 0.5))
 
 clusters = citizen_favgroups
 labels = 1:length(clusters)
@@ -123,8 +120,9 @@ levels(Candidate) = Cand_level[-1]
 Citizen_cluster = factor(clusters)
 df = data.frame(Candidate,labels,Citizen_cluster)
 
-xlab = "Citizen-Groups"; ylab = "Sizes"; main = "Sizes of the Citizen-Groups";
-GgPlotClusSizes(df, Citizen_cluster, ncluster, xlab, ylab, main)
+xlab = "Citizen-Clusters"; ylab = "Sizes"; main = "Sizes of the Citizen-Clusters";
+GgPlotClusSizes(df, Citizen_cluster, ncluster, xlab, ylab, main)+ 
+  theme(plot.title = element_text(hjust = 0.5))
 
 
 ## Compare ###
