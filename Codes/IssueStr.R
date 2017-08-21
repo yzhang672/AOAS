@@ -1,7 +1,4 @@
-rm()
 set.seed(1)
-
-library(Matrix); library(irlba);
 
 source('~/Dropbox/my project/frenchFacebook/code/code_cleaned/functions.R')
 setwd("~/Dropbox/my project/frenchFacebook/data")
@@ -25,17 +22,6 @@ quantile(XLY@x, prob = 0.99)
 
 XLY_thresh = threshold(XLY,thresh)
 
-#aprox = 0.99
-#SubgauConst = sqrt(quantile(Xs@x, probs = aprox)*quantile(Ys@x, probs = aprox))
-#dc = min(rowSums(allpostfans)) + mean(rowSums(allpostfans)); 
-#dp = min(colSums(allpostfans)) + mean(colSums(allpostfans))
-#gamma2 = sqrt(quantile(colSums(Xs^2), prob = aprox) * quantile(colSums(Ys^2), prob = aprox))
-#alpha = 1/2021
-#max(SubgauConst^2*max(sqrt(sum(GraphLap^2)*log(1/alpha)), 
-#                  irlba(GraphLap,nu = 1,nv = 1)$d[1]*log(1/alpha)),
-#    gamma2/sqrt(dc*dp)*sqrt(log(1/alpha)))
-
-#consts = c(0,0.5,1,1.5,2,5,10, 285.4246, 1e6)
 consts = c(0,0.5,1,1.5,2,5,10, 1e6)
 
 TextOnly = c(rep(0,length(consts)-1),1)
@@ -48,14 +34,12 @@ for (consti in 1:length(consts))
 {
   const = consts[consti]
   if(TextOnly[consti]==1){
-    XWY = Xs%*%((XLY_thresh)%*%t(Ys))-Xs%*%(MeanXLYs%*%t(Ys))
+    XWY = Xs%*%((XLY_thresh)%*%t(Ys))#-Xs%*%(MeanXLYs%*%t(Ys))
     svdAC <- irlba(XWY, nu=10, nv=10, 
-                   matmul = matmulACinf(XWY,Xs,Ys,XLY_thresh, 
-                                        MeanXLYs, meanXLYs = TRUE))
+                   matmul = matmulACinf(XWY,Xs,Ys,XLY_thresh))
   }else{
     svdAC <- irlba(GraphLap, nu=10, nv=10, 
-                   matmul = matmulAC(GraphLap,const,Xs,Ys,XLY_thresh, 
-                                     MeanXLYs, meanXLYs = TRUE))
+                   matmul = matmulAC(GraphLap,const,Xs,Ys,XLY_thresh))
   }
   
   svdACvalue <- svdAC$d
