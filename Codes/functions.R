@@ -1,9 +1,9 @@
-library(Matrix);library(dplyr);library(RSQLite);library(SnowballC)
-source("~/Dropbox/my project/frenchFacebook/code/words_del_sym.R")
+library(Matrix); library(irlba); library(ggplot2);
+library(tm); library(dplyr);
+library(XML);library(RCurl);library(devtools);library(qdap)
+library(stringr);library(RSQLite);library(SnowballC);
 
-#mycolor = c("red","blue","purple","magenta",
-#            "deepskyblue","orange","green", "cyan",
-#            "brown","yellow","skyblue")
+source("~/Dropbox/my project/frenchFacebook/code/words_del_sym.R")
 
 mycolor = c("magenta","deepskyblue","blue","red2",
             "orange","green", "purple", "brown",
@@ -32,11 +32,11 @@ createA <- function(x,y)
   return(A)
 }
 
-laplacian <- function(AdjMat,type,regular)
+laplacian <- function(AdjMat,type,regularizer)
 {
   rs = rowSums(AdjMat); cs = colSums(AdjMat); 
   taur = 0; tauc = 0
-  if(regular==TRUE)
+  if(regularizer==TRUE)
   {taur = mean(rs); tauc = mean(cs)}
   
   if(type=="row")
@@ -243,50 +243,37 @@ createB_general <- function(AdjMat, kms_cluster, kmr_cluster,ncluster,sorttype)
 }
 
 
-matmulAC <- function(A,const,Xs,Ys,XLY_thresh,MeanXLYs,meanXLYs)
+matmulAC <- function(A,const,Xs,Ys,XLY_thresh)
 {
   v <- apply(A,2,mean)
   function(A,x,transpose=FALSE)
   {
     if(transpose)
       return( as.matrix(t(crossprod(x,A)) - sum(x) * v))
-    
-    if(meanXLYs == TRUE)
+
       as.matrix(A %*% x + 
                   const*Xs %*% (XLY_thresh %*% crossprod(Ys,x))
-                # - cbind(rep(crossprod(v,x)[1],nrow(A))) 
-                - const*Xs %*% (MeanXLYs %*% crossprod(Ys,x))
-      )
-    else
-      as.matrix(A %*% x + 
-                  const*Xs %*% (XLY_thresh %*% crossprod(Ys,x))
-                # - cbind(rep(crossprod(v,x)[1],nrow(A)))
+                 - cbind(rep(crossprod(v,x)[1],nrow(A)))
       )
     
   }
 }
 
-matmulACinf <- function(XWY,Xs,Ys,XLY_thresh,MeanXLYs,meanXLYs)
+matmulACinf <- function(XWY,Xs,Ys,XLY_thresh)
 {
   
   v <- apply(XWY,2,mean)
   function(XWY,x,transpose=FALSE)
   {
     if(transpose)return( as.matrix(t(crossprod(x,XWY)) - sum(x) * v))
-    if(meanXLYs == TRUE)
+    
       as.matrix(
         Xs %*% (XLY_thresh %*% crossprod(Ys,x))
-        #- cbind(rep(crossprod(v,x)[1],nrow(A))) 
-        - Xs %*% (MeanXLYs %*% crossprod(Ys,x))
+         - cbind(rep(crossprod(v,x)[1],nrow(A)))
       )
-    else
-      as.matrix(
-        Xs %*% (XLY_thresh %*% crossprod(Ys,x))
-        # - cbind(rep(crossprod(v,x)[1],nrow(A)))
-      )
-  }
 }
 
+}
 drop2 = function(tmp){
   return(substr(tmp, start = 21, stop = nchar(tmp)))  
 }
