@@ -245,12 +245,9 @@ createB_general <- function(AdjMat, kms_cluster, kmr_cluster,ncluster,sorttype)
 
 matmulAC <- function(A,const,Xs,Ys,XLY_thresh)
 {
-  v <- apply(A,2,mean)
+  v <- apply((A + Xs %*% XLY_thresh %*% Ys), 2,mean)
   function(A,x,transpose=FALSE)
   {
-    if(transpose)
-      return( as.matrix(t(crossprod(x,A)) - sum(x) * v))
-
       as.matrix(A %*% x + 
                   const*Xs %*% (XLY_thresh %*% crossprod(Ys,x))
                  - cbind(rep(crossprod(v,x)[1],nrow(A)))
